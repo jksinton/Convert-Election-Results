@@ -1,3 +1,18 @@
+# Ignore local files that may contain sensitive information
+settings*.js
+settings*.ini
+
+# Ignore any local files or stored data
+*.sqlite
+*.db
+*.log
+*.geojson
+*.json
+*.csv
+*.zip
+*.png
+*.pdf
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -99,3 +114,18 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+# Swap
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-v][a-z]
+[._]sw[a-p]
+
+# Session
+Session.vim
+
+# Temporary
+.netrwhist
+*~
+# Auto-generated tag files
+tags
