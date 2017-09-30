@@ -11,6 +11,8 @@ settings*.ini
 *.csv
 *.zip
 *.png
+*.tiff
+*.TIFF
 *.pdf
 
 # Byte-compiled / optimized / DLL files
