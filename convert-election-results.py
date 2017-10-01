@@ -16,7 +16,7 @@ from pyPdf import PdfFileWriter, PdfFileReader
 from PIL import Image
 import cv2
 import numpy as np
-from matplotlib import pyplot as plt
+import csv
 
 VERSION = '0.1.0'
 
@@ -31,17 +31,20 @@ def read_settings(args):
     """
     # Default values
     pdf_file = None
+    image_file = None
+    debug_is_on = False
     
-    # Set values in settings.ini
-    #settings = ConfigParser.ConfigParser()
-    #settings.read('settings.ini') # change example.settings.ini to settings.ini
-
-    if args.file:
-        pdf_file=args.file
+    if args.pdf:
+        pdf_file=args.pdf
+    if args.image_file:
+        image_file=args.image_file
+    if args.debug:
+        debug_is_on=args.debug
 
     settings = {
                 "pdf_file": pdf_file,
-                "debug_is_on": False
+                "image_file": image_file,
+                "debug_is_on": debug_is_on
             }
 
     return settings
@@ -58,7 +61,8 @@ def get_command_line_args():
     """
     _version=VERSION
     parser = argparse.ArgumentParser(description='Convert election results to a computer readable format, e.g., csv, json, xml')
-    parser.add_argument('-f','--file', help='PDF file to process')
+    parser.add_argument('-p','--pdf', help='PDF file to process')
+    parser.add_argument('-i','--image-file', help='image file to process')
     parser.add_argument('-v','--version',action='version', 
             version='%(prog)s %(version)s' % {"prog": parser.prog, "version": _version})
     parser.add_argument('-d','--debug',help='print debug messages',action="store_true")
@@ -66,42 +70,77 @@ def get_command_line_args():
     return parser.parse_args()
 
 
-def election_results_to_csv(pdf_file='', debug_is_on=True):
+def convert_election_results(pdf_file=None, image_file=None, debug_is_on=True):
     """Convert the election results pdf to a computer readable format
     """
-    pdf = PdfFileReader(open(pdf_file, 'rb'))
+    if pdf_file is not None:
+        pdf = PdfFileReader(open(pdf_file, 'rb'))
+        total_pages = pdf.getNumPages()
+        old_office = ''
+        office_data = []
+        for page_num in range(total_pages):
+            tmp_tiff="tmp.tiff"
+            options="-sDEVICE=tiffgray -r300 -dINTERPOLATE -dFirstPage={page_num} -dLastPage={page_num} -dNumRenderingThreads=4 -sCompression=lzw -c 30000000 setvmthreshold".format(page_num=str(page_num + 1))
+            
+            os.system('gs -o %(tiff)s  %(options)s -f "%(pdf)s" > /dev/null 2>&1' % {"pdf": pdf_file, "tiff": tmp_tiff, "options": options})
+            
+            office_text, headers_text, data_text = convert_image(image_file=tmp_tiff, debug_is_on=debug_is_on)
+            
+            if office_text is not None: 
+                if office_text not in old_office:
+                    if len(office_data) > 0:
+                        with open('csv/' + old_office.encode('utf-8') + '.csv', 'w') as f:
+                            writer = csv.writer(f)
+                            writer.writerows(office_data)
 
-    for page_num in range(pdf.getNumPages()):
-        tiff="tmp.tiff"
-        options="-sDEVICE=tiffgray -r300 -dINTERPOLATE -dFirstPage={page_num} -dLastPage={page_num} -dNumRenderingThreads=4 -sCompression=lzw -c 30000000 setvmthreshold".format(page_num=str(page_num + 1))
-        
-        os.system('gs -o %(tiff)s  %(options)s -f "%(pdf)s" > /dev/null 2>&1' % {"pdf": pdf_file, "tiff": tiff, "options": options})
+                    office_data = []
+                    old_office = office_text
+                
+                office_data.append(headers_text)
+                
+                for line in data_text.split('\n'):
+                    if 'Totals' not in line.split(' ')[0]:
+                        line = line.replace('o','0')
+                    office_data.append([office_text] + line.split(' '))
 
-        cropped="cropped.tiff"
-        img = cv2.imread(tiff,1)
-        edges = cv2.Canny(img,100,200)
+                status = r"%s    %10d  [%3.2f%%]" % (office_text, page_num+1, (page_num+1) * 100. / total_pages)
+                status = status + chr(8)*(len(status)+1)
+                print status,
 
-        im2, contours, hierarchy = cv2.findContours(edges, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
-        
-        boxes = []
-        for c in contours:
-            if cv2.contourArea(c, True) > 0:
-                x,y,w,h = cv2.boundingRect(c)
-                if h > 50 and w > 50:
-                    boxes.append({'x': x, 'y': y, 'w': w, 'h': h}) 
-                    #column_headers.append({'x': x, 'y': y, 'w': w, 'h': h}) 
-                    if debug_is_on:
-                        print "x: " +  str(x) + ", y: " + str(y) + ", w: " + str(w) + ", h: " + str(h)
-                    cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
-            else:
-                x,y,w,h = cv2.boundingRect(c)
-                if w > 1000 and h > 50 and y > 1000:
-                    cv2.rectangle(img,(x,y),(x+w,y+h),(0,0,255),2)
-                    if debug_is_on:
-                        print "Totals"
-                        print "x: " +  str(x) + ", y: " + str(y) + ", w: " + str(w) + ", h: " + str(h)
+    if image_file is not None:
+        convert_image(image_file=image_file, debug_is_on=debug_is_on)
 
-        
+
+def convert_image(image_file=None, debug_is_on=False):
+    """Return the office, headers, and data found contained in the image
+    """
+    office_text = None
+    headers_text = None
+    data_text = None
+
+    cropped="cropped.tiff"
+    img = cv2.imread(image_file,1)
+    edges = cv2.Canny(img,100,200)
+
+    im2, contours, hierarchy = cv2.findContours(edges, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+    
+    boxes = []
+    for c in contours:
+        if cv2.contourArea(c, True) > 0:
+            x,y,w,h = cv2.boundingRect(c)
+            if h > 50 and w > 50:
+                boxes.append({'x': x, 'y': y, 'w': w, 'h': h}) 
+                if debug_is_on:
+                    print "x: " +  str(x) + ", y: " + str(y) + ", w: " + str(w) + ", h: " + str(h)
+                cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
+        else:
+            x,y,w,h = cv2.boundingRect(c)
+            if w > 1000 and h > 50 and y > 1000:
+                cv2.rectangle(img,(x,y),(x+w,y+h),(0,0,255),2)
+                if debug_is_on:
+                    print "Totals"
+                    print "x: " +  str(x) + ", y: " + str(y) + ", w: " + str(w) + ", h: " + str(h)
+    if len(boxes) > 0:
         y_for_column_headers = boxes[0]['y']
         h_for_column_headers = boxes[0]['h']
         y_for_office = boxes[len(boxes)-2]['y']
@@ -123,17 +162,18 @@ def election_results_to_csv(pdf_file='', debug_is_on=True):
         w = office['w']
         h = office['h']
         
-        im = Image.open(tiff)
+        im = Image.open(image_file)
         
         width, height = im.size
 
         cropped = im.crop((x+5,y+5,x+w-5,y+h-5))
-        office_text = tesseract.image_to_string(cropped).replace('\n',' ')
-        print(office_text)
+        office_text = tesseract.image_to_string(cropped).replace('\n',' ').encode('utf-8')
         if debug_is_on:
+            print office_text
             cropped.save('cropped_office.tiff', "TIFF")
         
         headers_text = []
+        headers_text.append('Office')
         for i in range(len(column_headers)):
             x = column_headers[i]['x']
             y = column_headers[i]['y']
@@ -146,16 +186,17 @@ def election_results_to_csv(pdf_file='', debug_is_on=True):
             if i > 5:
                 cropped = cropped.transpose(Image.ROTATE_270)
             
-            header_text = tesseract.image_to_string(cropped).replace('\n', ' ')
+            header_text = tesseract.image_to_string(cropped).replace('\n', ' ').encode('utf-8')
             headers_text.append(header_text)
 
             if debug_is_on:
                 print header_text
                 cropped.save('cropped_'+str(i)+'.tiff', "TIFF")
-        
-        for header_text in headers_text:
-            print '{header_text},'.format(header_text = header_text),
-        print '\n',
+        if debug_is_on:
+            for header_text in headers_text:
+                header_text = header_text.encode('utf-8')
+                print '{header_text},'.format(header_text = header_text),
+            print '\n',
 
         y = y_for_column_headers
         h = h_for_column_headers
@@ -164,21 +205,26 @@ def election_results_to_csv(pdf_file='', debug_is_on=True):
         right = width - 1
         lower = height - 1
         cropped = im.crop((left, upper, right, lower))
-        data_text = tesseract.image_to_string(image=cropped, config='-psm 6')
+        data_text = tesseract.image_to_string(image=cropped, config='-psm 6').encode('utf-8')
         data_text = data_text.replace(' ,', '')
+        data_text = data_text.replace(' .', '.')
         data_text = data_text.replace(',', '')
         
-        for line in data_text.split('\n'):
-            if 'Totals' not in line.split(' ')[0]:
-                line = line.replace('o','0')
-            print line.replace(' ', ',')
-
         if debug_is_on:
-            cropped.save('cropped_data.tiff', "TIFF")
-            cv2.imwrite('contours.png',img)
-            cv2.imwrite('canny.png', edges)
+            for line in data_text.split('\n'):
+                if 'Totals' not in line.split(' ')[0]:
+                    line = line.replace('o','0')
+                print line.replace(' ', ',').encode('utf-8')
 
-        os.remove(tiff)
+    if debug_is_on:
+        cropped.save('cropped_data.tiff', "TIFF")
+        cv2.imwrite('contours.png',img)
+        cv2.imwrite('canny.png', edges)
+    
+    if image_file is 'tmp.tiff':
+        os.remove(image_file)
+
+    return office_text, headers_text, data_text
 
 
 def main():
@@ -187,9 +233,10 @@ def main():
     args = get_command_line_args()
     settings = read_settings(args)
     pdf_file = settings['pdf_file']
+    image_file = settings['image_file']
     debug_is_on = settings['debug_is_on']
 
-    election_results_to_csv(pdf_file=pdf_file, debug_is_on=debug_is_on)
+    convert_election_results(pdf_file=pdf_file, image_file=image_file, debug_is_on=debug_is_on)
 
 
 if __name__ == "__main__":
