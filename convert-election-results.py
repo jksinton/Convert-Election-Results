@@ -18,10 +18,10 @@ import cv2
 import numpy as np
 import csv
 
-VERSION = '0.1.0'
+VERSION = '0.2.0'
 
 def read_settings(args):
-    """Read the settings stored in settings.ini
+    """Processing the settings from commandline
     Args: 
         args: argparse.ArgumentParser object that stores command line arguments
     Returns: 
