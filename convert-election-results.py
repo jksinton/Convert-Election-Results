@@ -18,16 +18,16 @@ import cv2
 import numpy as np
 import csv
 
-VERSION = '0.2.0'
+VERSION = '0.2.1'
 
 def read_settings(args):
     """Processing the settings from commandline
     Args: 
         args: argparse.ArgumentParser object that stores command line arguments
     Returns: 
-        settings: A dictionary holding the argument(s)
+        settings: A dictionary to pass the settings to main
     Raises:
-        Nothing (yet)
+        Nothing
     """
     # Default values
     pdf_file = None
@@ -82,6 +82,16 @@ def get_command_line_args():
 
 def convert_election_results(pdf_file=None, image_file=None, first_page=None, last_page=None, debug_is_on=True):
     """Convert the election results pdf to a computer readable format
+    Args:
+        pdf_file:
+        image_file:
+        first_page:
+        last_page:
+        debug_is_on:
+    Return: 
+        Nothing
+    Raises:
+        Nothing
     """
     if pdf_file is not None:
         pdf = PdfFileReader(open(pdf_file, 'rb'))
@@ -101,6 +111,8 @@ def convert_election_results(pdf_file=None, image_file=None, first_page=None, la
             last_page = final_page
             first_page = 1
             pages = range(first_page, last_page+1)
+
+        print "Reading {0}".format(pdf_file)
         for page_num in pages:
             tmp_tiff="tmp.tiff"
             options="-sDEVICE=tiffgray -r300 -dINTERPOLATE -dFirstPage={page_num} -dLastPage={page_num} -dNumRenderingThreads=4 -sCompression=lzw -c 30000000 setvmthreshold".format(page_num=str(page_num))
@@ -108,7 +120,8 @@ def convert_election_results(pdf_file=None, image_file=None, first_page=None, la
             os.system('gs -o %(tiff)s  %(options)s -f "%(pdf)s" > /dev/null 2>&1' % {"pdf": pdf_file, "tiff": tmp_tiff, "options": options})
             
             office_text, headers_text, data_text = convert_image(image_file=tmp_tiff, debug_is_on=debug_is_on)
-            
+            os.remove(tmp_tiff)
+           
             if office_text is not None: 
                 if office_text not in old_office:
                     if len(office_data) > 0:
@@ -125,24 +138,36 @@ def convert_election_results(pdf_file=None, image_file=None, first_page=None, la
                     if 'Totals' not in line.split(' ')[0]:
                         line = line.replace('o','0')
                     office_data.append([office_text] + line.split(' '))
-                print type(page_num)
-                print type(last_page)
+                
                 if page_num == last_page:
                         print "writing last file"
                         with open('csv/' + office_text.encode('utf-8') + '.csv', 'w') as f:
                             writer = csv.writer(f)
                             writer.writerows(office_data)
-
-                status = r"%s    %10d  [%3.2f%%]" % (office_text, page_num, ((page_num + 1) - first_page) * 100. / total_pages)
-                status = status + chr(8)*(len(status)+1)
-                print status,
+                
+                status_line1 = 'Processing {office_text}'.format(office_text=office_text)
+                status_line2 = r"Page %10d  [%3.2f%%]" % (page_num, ((page_num + 1) - first_page) * 100. / total_pages)
+                
+                print status_line1
+                print status_line2 + '\n'
+            else:
+                print "Skipping page {page_num} . . .".format(page_num=page_num)
 
     if image_file is not None:
         convert_image(image_file=image_file, debug_is_on=debug_is_on)
 
 
 def convert_image(image_file=None, debug_is_on=False):
-    """Return the office, headers, and data found contained in the image
+    """Convert the election results pdf to a computer readable format
+    Args:
+        image_file:
+        debug_is_on:
+    Return: 
+        office_text:
+        headers_text:
+        data_text:
+    Raises:
+        Nothing
     """
     office_text = None
     headers_text = None
@@ -151,6 +176,7 @@ def convert_image(image_file=None, debug_is_on=False):
     cropped="cropped.tiff"
     img = cv2.imread(image_file,1)
     edges = cv2.Canny(img,100,200)
+    
 
     im2, contours, hierarchy = cv2.findContours(edges, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
     
@@ -171,6 +197,9 @@ def convert_image(image_file=None, debug_is_on=False):
                     print "Totals"
                     print "x: " +  str(x) + ", y: " + str(y) + ", w: " + str(w) + ", h: " + str(h)
     if len(boxes) > 0:
+        im = Image.open(image_file)
+        width, height = im.size
+
         y_for_column_headers = boxes[0]['y']
         h_for_column_headers = boxes[0]['h']
         y_for_office = boxes[len(boxes)-2]['y']
@@ -192,10 +221,6 @@ def convert_image(image_file=None, debug_is_on=False):
         w = office['w']
         h = office['h']
         
-        im = Image.open(image_file)
-        
-        width, height = im.size
-
         cropped = im.crop((x+5,y+5,x+w-5,y+h-5))
         office_text = tesseract.image_to_string(cropped).replace('\n',' ').encode('utf-8')
         if debug_is_on:
@@ -236,8 +261,11 @@ def convert_image(image_file=None, debug_is_on=False):
         lower = height - 1
         cropped = im.crop((left, upper, right, lower))
         data_text = tesseract.image_to_string(image=cropped, config='-psm 6').encode('utf-8')
+        
+        # correct some common errors in the OCR results
         data_text = data_text.replace(' ,', '')
         data_text = data_text.replace(' .', '.')
+        data_text = data_text.replace(' %', '%')
         data_text = data_text.replace(',', '')
         
         if debug_is_on:
@@ -245,14 +273,11 @@ def convert_image(image_file=None, debug_is_on=False):
                 if 'Totals' not in line.split(' ')[0]:
                     line = line.replace('o','0')
                 print line.replace(' ', ',').encode('utf-8')
-
     if debug_is_on:
         cropped.save('cropped_data.tiff', "TIFF")
         cv2.imwrite('contours.png',img)
         cv2.imwrite('canny.png', edges)
     
-    if image_file is 'tmp.tiff':
-        os.remove(image_file)
 
     return office_text, headers_text, data_text
 
