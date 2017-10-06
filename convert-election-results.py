@@ -12,10 +12,9 @@ import sys
 import os
 import argparse
 import pytesseract as tesseract
-from pyPdf import PdfFileReader
+from PyPDF2 import PdfFileReader
 from PIL import Image
 import cv2
-import numpy as np
 import csv
 
 VERSION = '0.2.2'
