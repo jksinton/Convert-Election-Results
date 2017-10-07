@@ -5,13 +5,22 @@ It also generates a separate csv file for each office or proposition being talli
 
 Please note that it does not process the cummulative reports. 
 
-## Python Dependencies:
+## Python Dependencies
   * [pytesseract](https://github.com/madmaze/pytesseract)
   * [PyPDF2](https://github.com/mstamy2/PyPDF2)
   * [Pillow](https://github.com/python-pillow/Pillow)
   * cv2 (OpenCV 3.3+) See, e.g., [opencv-python](https://github.com/skvark/opencv-python) or [compile OpenCV with the Python module](https://www.pyimagesearch.com/2016/10/24/ubuntu-16-04-how-to-install-opencv/)
 
-## Usage:
+## Ghostscript
+  * [GPL Ghostscript](https://www.ghostscript.com/) 9.18+
+    * This script converts each page of the PDF into a TIFF file using Ghostscript.
+    * Check your version:  ``gs -v``
+
+### Install Ghostscript
+  * Ubuntu:  ```sudo apt-get install ghostscript```
+  * macOS:  ```brew install ghostscript```
+
+## Usage
 
 ```
 usage: convert-election-results.py [-h] [-p PDF] [-i IMAGE_FILE]
