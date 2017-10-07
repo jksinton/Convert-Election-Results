@@ -38,4 +38,4 @@ optional arguments:
 ```
 
 ## Disclaimer
-This product uses the election results available from Harris County Clerk but is not endorsed or certified by the Harris County Clerk.
+This product uses the election results available from the Harris County Clerk but is not endorsed or certified by the Harris County Clerk.
