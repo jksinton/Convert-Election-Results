@@ -12,8 +12,13 @@ import sys
 import os
 import argparse
 import pytesseract as tesseract
+import tempfile
+try:
+    import Image
+except ImportError:
+    from PIL import Image
+from etaprogress.progress import ProgressBar
 from PyPDF2 import PdfFileReader
-from PIL import Image
 import cv2
 import csv
 
@@ -84,6 +89,34 @@ def get_command_line_args():
     return parser.parse_args()
 
 
+def tempname():
+    ''' returns a temporary filename 
+    Args:
+        Nothing
+    Return: 
+        tmpfile.name: string of temporary filename
+    Raises:
+        Nothing
+    '''
+    tmpfile = tempfile.NamedTemporaryFile(prefix="tmp")
+    return tmpfile.name
+
+
+def remove(filename):
+    ''' tries to remove the given filename. Ignores non-existent files 
+    Args:
+        filename: string of filename
+    Return: 
+        Nothing
+    Raises:
+        Nothing
+    '''
+    try:
+        os.remove(filename)
+    except OSError:
+        pass
+
+
 def convert_election_results(pdf_file=None, image_file=None, first_page=None, 
         last_page=None, output_path=None, debug_is_on=True):
     """Convert the election results pdf to a computer readable format
@@ -122,16 +155,17 @@ def convert_election_results(pdf_file=None, image_file=None, first_page=None,
             first_page = 1
             pages = range(first_page, last_page+1)
 
-        print "Reading {0}\n".format(pdf_file)
-
+        print "Converting {0}\n".format(pdf_file)
+        
+        bar = ProgressBar(total_pages, max_width=80)
         for page_num in pages:
-            tmp_tiff="tmp.tiff"
+            tmp_tiff="%s.tiff" % tempname()
             options="-sDEVICE=tiffgray -r300 -dINTERPOLATE -dFirstPage={page_num} -dLastPage={page_num} -dNumRenderingThreads=4 -sCompression=lzw -c 30000000 setvmthreshold".format(page_num=str(page_num))
             
             os.system('gs -o %(tiff)s  %(options)s -f "%(pdf)s" > /dev/null 2>&1' % {"pdf": pdf_file, "tiff": tmp_tiff, "options": options})
             
             office_text, headers_text, data_text = convert_image(image_file=tmp_tiff, debug_is_on=debug_is_on)
-            os.remove(tmp_tiff)
+            remove(tmp_tiff)
            
             if office_text is not None: 
                 if office_text not in previous_office:
@@ -146,9 +180,15 @@ def convert_election_results(pdf_file=None, image_file=None, first_page=None,
                 office_data.append(headers_text)
                 
                 for line in data_text.split('\n'):
+                    row = []
                     if 'Totals' not in line.split(' ')[0]:
                         line = line.replace('o','0')
-                    office_data.append([office_text] + line.split(' '))
+                        row = line.split(' ')
+                    else:
+                        row = line.split(' ')
+                        if len(row) > 6:
+                            row.insert(5,'')
+                    office_data.append([office_text] + row)
                 
                 if page_num == last_page:
                         print "writing last file"
@@ -156,20 +196,22 @@ def convert_election_results(pdf_file=None, image_file=None, first_page=None,
                             writer = csv.writer(f)
                             writer.writerows(office_data)
                 
-                status_line1 = '{office_text}'.format(office_text=office_text)
-                status_line2 = r"%10d  [%3.2f%%]" % (page_num, ((page_num + 1) - first_page) * 100. / total_pages)
+                numerator = (page_num + 1) - first_page
+                bar.numerator = numerator
+
+                print bar,
+                print '\r',
+                sys.stdout.flush()
                 
-                print status_line1
-                print '\t' + status_line2 + '\n'
+                #status_line1 = '{office_text}'.format(office_text=office_text)
             else:
-                skipped_pages.append(page_nume)
-                print "Skipping page {page_num} . . .\n".format(page_num=page_num) 
+                skipped_pages.append(page_num)
     
     print "Done.\n"
     if len(skipped_pages) > 0:
         print "Page(s) skipped:",
         for page_num in skipped_pages:
-            print '  ' + page_num,
+            print '  ' + str(page_num),
 
     if image_file is not None:
         office_text, headers_text, data_text = convert_image(image_file=tmp_tiff, debug_is_on=debug_is_on)
@@ -199,11 +241,13 @@ def convert_image(image_file=None, debug_is_on=False):
 
     im2, contours, hierarchy = cv2.findContours(edges, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
 
-    # find the boxes around the header
+    # find the boxes around the header and the office/proposition
     boxes = []
+    totals = {}
     for c in contours:
         if cv2.contourArea(c, True) > 0:
             x,y,w,h = cv2.boundingRect(c)
+            # find each box that surrounds the header and office
             if h > 50 and w > 50:
                 boxes.append({'x': x, 'y': y, 'w': w, 'h': h}) 
                 if debug_is_on:
@@ -211,7 +255,10 @@ def convert_image(image_file=None, debug_is_on=False):
                     cv2.rectangle(cv_img,(x,y),(x+w,y+h),(0,255,0),2)
         else:
             x,y,w,h = cv2.boundingRect(c)
+            # TODO use this box
+            # find the box that surrounds the total for each each office/proposition
             if w > 1000 and h > 50 and y > 1000:
+                totals = {'x': x, 'y': y, 'w': w, 'h': h} 
                 if debug_is_on:
                     cv2.rectangle(cv_img,(x,y),(x+w,y+h),(0,0,255),2)
                     print "Totals"
@@ -242,7 +289,8 @@ def convert_image(image_file=None, debug_is_on=False):
         cropped = pil_img.crop((x+5,y+5,x+w-5,y+h-5))
         # OCR the office or proposition
         office_text = tesseract.image_to_string(cropped).replace('\n',' ').encode('utf-8')
-        
+        office_text = office_text.replace('|', 'I')
+
         headers_text = []
         headers_text.append('Office')
         
