@@ -22,7 +22,7 @@ from PyPDF2 import PdfFileReader
 import cv2
 import csv
 
-VERSION = '0.2.2'
+VERSION = '0.3.0'
 
 def read_settings(args):
     """Processing the settings from commandline
@@ -136,6 +136,7 @@ def convert_election_results(pdf_file=None, image_file=None, first_page=None,
         final_page = PdfFileReader(open(pdf_file, 'rb')).getNumPages()
         total_pages = final_page
         previous_office = ''
+        previous_candidate = ''
         office_data = []
         pages = []
         skipped_pages = []
@@ -166,8 +167,8 @@ def convert_election_results(pdf_file=None, image_file=None, first_page=None,
             
             office_text, headers_text, data_text = convert_image(image_file=tmp_tiff, debug_is_on=debug_is_on)
             remove(tmp_tiff)
-           
             if office_text is not None: 
+                
                 if office_text not in previous_office:
                     if len(office_data) > 0:
                         with open(output_path + previous_office.encode('utf-8') + '.csv', 'w') as f:
@@ -177,7 +178,14 @@ def convert_election_results(pdf_file=None, image_file=None, first_page=None,
                     office_data = []
                     previous_office = office_text
                 
-                office_data.append(headers_text)
+                if len(headers_text) >= 8:
+                    current_candidate = headers_text[7] 
+                else:
+                    current_candidate = 'nothing'
+
+                if current_candidate not in previous_candidate:
+                    previous_candidate = current_candidate
+                    office_data.append(headers_text)
                 
                 for line in data_text.split('\n'):
                     row = []
@@ -191,7 +199,6 @@ def convert_election_results(pdf_file=None, image_file=None, first_page=None,
                     office_data.append([office_text] + row)
                 
                 if page_num == last_page:
-                        print "writing last file"
                         with open(output_path + office_text.encode('utf-8') + '.csv', 'w') as f:
                             writer = csv.writer(f)
                             writer.writerows(office_data)
@@ -203,10 +210,10 @@ def convert_election_results(pdf_file=None, image_file=None, first_page=None,
                 print '\r',
                 sys.stdout.flush()
                 
-                #status_line1 = '{office_text}'.format(office_text=office_text)
             else:
                 skipped_pages.append(page_num)
     
+    print "\n"
     print "Done.\n"
     if len(skipped_pages) > 0:
         print "Page(s) skipped:",
@@ -257,6 +264,7 @@ def convert_image(image_file=None, debug_is_on=False):
             x,y,w,h = cv2.boundingRect(c)
             # TODO use this box
             # find the box that surrounds the total for each each office/proposition
+            # the y condition won't work in this if statement
             if w > 1000 and h > 50 and y > 1000:
                 totals = {'x': x, 'y': y, 'w': w, 'h': h} 
                 if debug_is_on:
@@ -328,9 +336,12 @@ def convert_image(image_file=None, debug_is_on=False):
         # OCR the election results
         data_text = tesseract.image_to_string(image=cropped, config='-psm 6').encode('utf-8')
         
+        # TODO make this optional
         # correct common errors in the OCR results
+        data_text = data_text.replace(' e', '6')
         data_text = data_text.replace(' ,', '')
         data_text = data_text.replace(' .', '.')
+        data_text = data_text.replace('. ', '.')
         data_text = data_text.replace(' %', '%')
         data_text = data_text.replace(',', '')
         
