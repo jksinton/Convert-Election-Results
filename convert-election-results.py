@@ -14,9 +14,9 @@ import argparse
 import pytesseract as tesseract
 import tempfile
 try:
-    import Image
+    import Image, ImageDraw
 except ImportError:
-    from PIL import Image
+    from PIL import Image, ImageDraw
 from etaprogress.progress import ProgressBar
 from PyPDF2 import PdfFileReader
 import cv2
@@ -250,6 +250,7 @@ def convert_image(image_file=None, debug_is_on=False):
 
     # find the boxes around the header and the office/proposition
     boxes = []
+    lines = []
     totals = {}
     for c in contours:
         if cv2.contourArea(c, True) > 0:
@@ -257,6 +258,11 @@ def convert_image(image_file=None, debug_is_on=False):
             # find each box that surrounds the header and office
             if h > 60 and w > 50:
                 boxes.append({'x': x, 'y': y, 'w': w, 'h': h}) 
+                if debug_is_on:
+                    print "x: " +  str(x) + ", y: " + str(y) + ", w: " + str(w) + ", h: " + str(h)
+                    cv2.rectangle(cv_img,(x,y),(x+w,y+h),(0,255,0),2)
+            if h < 10 and w > 1000:
+                lines.append({'x': x, 'y': y, 'w': w, 'h': h}) 
                 if debug_is_on:
                     print "x: " +  str(x) + ", y: " + str(y) + ", w: " + str(w) + ", h: " + str(h)
                     cv2.rectangle(cv_img,(x,y),(x+w,y+h),(0,255,0),2)
@@ -270,7 +276,10 @@ def convert_image(image_file=None, debug_is_on=False):
                 if debug_is_on:
                     cv2.rectangle(cv_img,(x,y),(x+w,y+h),(0,0,255),2)
                     print "Find Totals\tx: " +  str(x) + ", y: " + str(y) + ", w: " + str(w) + ", h: " + str(h)
-
+    
+    # if the boxes that surround the office and headers were found
+    # process the page
+    # TODO process the page without the office and headers
     if len(boxes) > 0:
         pil_img = Image.open(image_file)
         width, height = pil_img.size
@@ -283,8 +292,8 @@ def convert_image(image_file=None, debug_is_on=False):
         column_headers = []
         office = {}
         
-        for i in range(len(boxes)):
-            x, y, w, h = ( boxes[i]['x'], boxes[i]['y'], boxes[i]['w'], boxes[i]['h'] )
+        for box in boxes:
+            x, y, w, h = ( box['x'], box['y'], box['w'], box['h'] )
             if y == y_for_column_headers:
                 column_headers.append({'x': x, 'y': y, 'w': w, 'h': h}) 
             if y == y_for_office:
@@ -301,16 +310,17 @@ def convert_image(image_file=None, debug_is_on=False):
         headers_text.append('Office')
         
         column_headers = sorted(column_headers, key=lambda k: k['x'])
-        for i in range(len(column_headers)):
+        header_index = 0
+        for column_header in column_headers:
             # crop the header text from the image
-            x, y, w, h = ( column_headers[i]['x'], column_headers[i]['y'], 
-                    column_headers[i]['w'], column_headers[i]['h'] )
+            x, y, w, h = ( column_header['x'], column_header['y'], 
+                    column_header['w'], column_header['h'] )
             cropped = pil_img.crop((x+5,y+5,x+w-5,y+h-5))
             
             # the candidates are vertically alligned text
             # so if the header is for the candidate or proposition, 
             # rotate the cropped image 90 degrees clockwise
-            if i > 5:
+            if header_index > 5:
                 cropped = cropped.transpose(Image.ROTATE_270)
             
             # OCR the header
@@ -320,7 +330,15 @@ def convert_image(image_file=None, debug_is_on=False):
             if debug_is_on:
                 cv2.rectangle(cv_img,(x,y),(x+w,y+h),(255,0,0),3)
                 print header_text
-                cropped.save('cropped_'+str(i)+'.tiff', "TIFF")
+                cropped.save('cropped_'+str(header_index)+'.tiff', "TIFF")
+            header_index = header_index + 1 
+        # draw a white rectangle over the reference lines
+        # this mitigates tesseract from skipping a row
+        if len(lines) > 0:
+            draw = ImageDraw.Draw(pil_img)
+            for line in lines:
+                x, y, w, h = ( line['x'], line['y'], line['w'], line['h'] )
+                draw.rectangle( (x, y, x+w, y+h), fill="white", outline=None)
         
         # crop the election results without the header from the image
         y = y_for_column_headers
