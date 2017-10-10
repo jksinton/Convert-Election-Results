@@ -22,7 +22,7 @@ from PyPDF2 import PdfFileReader
 import cv2
 import csv
 
-VERSION = '0.3.0'
+VERSION = '0.3.1'
 
 def read_settings(args):
     """Processing the settings from commandline
