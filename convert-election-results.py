@@ -255,7 +255,7 @@ def convert_image(image_file=None, debug_is_on=False):
         if cv2.contourArea(c, True) > 0:
             x,y,w,h = cv2.boundingRect(c)
             # find each box that surrounds the header and office
-            if h > 50 and w > 50:
+            if h > 60 and w > 50:
                 boxes.append({'x': x, 'y': y, 'w': w, 'h': h}) 
                 if debug_is_on:
                     print "x: " +  str(x) + ", y: " + str(y) + ", w: " + str(w) + ", h: " + str(h)
@@ -269,8 +269,7 @@ def convert_image(image_file=None, debug_is_on=False):
                 totals = {'x': x, 'y': y, 'w': w, 'h': h} 
                 if debug_is_on:
                     cv2.rectangle(cv_img,(x,y),(x+w,y+h),(0,0,255),2)
-                    print "Totals"
-                    print "x: " +  str(x) + ", y: " + str(y) + ", w: " + str(w) + ", h: " + str(h)
+                    print "Find Totals\tx: " +  str(x) + ", y: " + str(y) + ", w: " + str(w) + ", h: " + str(h)
 
     if len(boxes) > 0:
         pil_img = Image.open(image_file)
@@ -286,7 +285,6 @@ def convert_image(image_file=None, debug_is_on=False):
         
         for i in range(len(boxes)):
             x, y, w, h = ( boxes[i]['x'], boxes[i]['y'], boxes[i]['w'], boxes[i]['h'] )
-            
             if y == y_for_column_headers:
                 column_headers.append({'x': x, 'y': y, 'w': w, 'h': h}) 
             if y == y_for_office:
