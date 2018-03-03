@@ -37,7 +37,14 @@ Please note that it does not process the cummulative reports.
     * Errors in the candidate vote counts (i.e., there's an error in the votes for one of the candidates or total votes). It does not check whether the precinct values are correct or the percentages.   
   * Recommended command templates will be generated in the `recommended_repairs.txt` file. You MUST edit the repair commands, by finding the error in the corresponding `error_pages.pdf` file.  This PDF file is a concatenated version of the canvass PDF to facilitate updating the repair commands.
 
-An example repair command for a column discontinuity looks like this:
+3. Check for errors again by providing the path to all the csv files:  `python votes.py -c 2016`
+
+4. Generate the command templates based on the new errors by providing the new error log file and the canvass PDF:  `python votes.py -r new_error.log -p cavnass.pdf`
+
+5. Repeat steps 2 and 3 as needed.
+
+
+### An example repair command for a column discontinuity looks like this:
 ```
 # column discontinuity:
 # 0010    703    232    935    1830    51    09%    92    466    7    7    572 
@@ -51,13 +58,6 @@ The grep command allows you to check whether the error exists and has been resol
 	grep "0010,703,232,935,1830,51,09%,92,466,7,7,572" 'Straight Party.csv'
 	sed -i 's/0010,703,232,935,1830,51,09%,92,466,7,7,572/0010,703,232,935,1830,51.09%,92,466,7,7,572/g' 'Straight Party.csv'
 ```
-
-
-3. Check for errors again by providing the path to all the csv files:  `python votes.py -c 2016`
-
-4. Generate the command templates based on the new errors by providing the new error log file and the canvass PDF:  `python votes.py -r new_error.log -p cavnass.pdf`
-
-5. Repeat steps 2 and 3 as needed.
 
 ## Usage
 
