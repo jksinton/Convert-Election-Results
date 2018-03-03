@@ -686,7 +686,7 @@ def recommend_csv_repairs(logfilename, pdf_file, debug_is_on=False):
                     if p['error_type'] == ballot_error:
                         search = '*'
                     else:
-                        search = p['search_file']
+                        search = '\'{search}\''.format(search=p['search_file'])
 
                     #recomm.write('# {row_id} \n'.format(
                     #    row_id=p['row_id']))
@@ -695,11 +695,11 @@ def recommend_csv_repairs(logfilename, pdf_file, debug_is_on=False):
                     recomm.write('# {row} \n'.format(
                         row=p['row']))
                     recomm.write(
-                            '\tgrep \"{pattern}\" \'{search}\'\n'.format(
+                            '\tgrep \"{pattern}\" {search}\n'.format(
                                 pattern=p['pattern'],search=search)
                             )
                     recomm.write(
-                            '\tsed -i \'s/{pattern}/{pattern}/g\' \'{search}\'\n\n'.format(
+                            '\tsed -i \'s/{pattern}/{pattern}/g\' {search}\n\n'.format(
                                 pattern=p['pattern'],search=search)
                             )
                 recomm.write('#################################\n')
@@ -721,7 +721,7 @@ def recommend_csv_repairs(logfilename, pdf_file, debug_is_on=False):
             if p['error_type'] == ballot_error:
                 search = '*'
             else:
-                search = p['search_file']
+                search = '\'{search}\''.format(search=p['search_file'])
             
             #recomm.write('# {row_id} \n'.format(
             #    row_id=p['row_id']))
@@ -730,11 +730,11 @@ def recommend_csv_repairs(logfilename, pdf_file, debug_is_on=False):
             recomm.write('# {row} \n'.format(
                 row=p['row']))
             recomm.write(
-                    '\tgrep \'{pattern}\' \'{search}\'\n'.format(
+                    '\tgrep \'{pattern}\' {search}\n'.format(
                         pattern=p['pattern'],search=search)
                     )
             recomm.write(
-                    '\tsed -i \'s/{pattern}/{pattern}/g\' \'{search}\'\n\n'.format(
+                    '\tsed -i \'s/{pattern}/{pattern}/g\' {search}\n\n'.format(
                         pattern=p['pattern'],search=search)
                     )
 
