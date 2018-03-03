@@ -914,7 +914,8 @@ def find_errors_in_csv_files(csv_path=None, debug_is_on=False):
 def find_errors_in_csv_file(csv=None, logfilename="errors.log", debug_is_on=False):
     """Find csv errors in the csv file
     Args:
-        csv: file name of csv file
+        csv: file name of csv file to error check
+        logfilename: name of error log file
         debug_is_on: boolean flag to trigger debug output
     Return:
         Nothing
