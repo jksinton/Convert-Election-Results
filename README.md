@@ -26,6 +26,10 @@ Please note that it does not process the cummulative reports.
   * Ubuntu:  ```sudo apt-get install ghostscript```
   * macOS:  ```brew install ghostscript```
 
+### Tesseract
+  * This script performs the OCR using [Tesseract](https://github.com/tesseract-ocr/tesseract) via the python wrapper pytesseract noted above.
+  * Installation instructions for Tesseract are available [here](https://github.com/tesseract-ocr/tesseract/wiki#installation)
+
 ## Instructions
 1. Convert the election results to CSV format by providing the pdf file and output path to store the CSVs:  `python votes.py -p canvass-2016.pdf -o 2016`
 
