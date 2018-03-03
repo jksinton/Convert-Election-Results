@@ -27,7 +27,7 @@ Please note that it does not process the cummulative reports.
   * macOS:  ```brew install ghostscript```
 
 ## Instructions
-1. Convert the election results to CSV format by providing the pdf file and output path to store the CSVs:  `python votes.py -p canvass-2016.pdf -o 2016
+1. Convert the election results to CSV format by providing the pdf file and output path to store the CSVs:  `python votes.py -p canvass-2016.pdf -o 2016`
 
 2. Correct any errors flagged in the error.log file.  
   *  This MUST be done.  There will likely be thousands (e.g., 3000+) of errors identified, but many of the identified errors are duplicates and on the same page.  
@@ -56,7 +56,7 @@ Please note that it does not process the cummulative reports.
 * The grep command allows you to check whether the error exists and has been resolved.  
 * The sed command is used to correct the error. You edit the second half of the sed command, i.e., you make the correction in the string after the `/`.  
 
-In this example, the percent turnout is split by an extra comma.  To correct this, you would replace the comma with a `.` as provided below.  Finally, you run the folling in the directory of the CSV files and can check if the error has been resolved with the grep command.
+In this example, the percent turnout is split by an extra comma.  To correct this, you would replace the comma with a `.` as provided below.  Finally, you run the following in the directory of the CSV files. You can check if the error has been resolved with the grep command.
 ```bash
 # column discontinuity:
 # 0010    703    232    935    1830    51    09%    92    466    7    7    572 
