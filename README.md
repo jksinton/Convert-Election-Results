@@ -45,7 +45,7 @@ Please note that it does not process the cummulative reports.
 
 
 ### An example repair command for a column discontinuity error looks like this:
-```
+```bash
 # column discontinuity:
 # 0010    703    232    935    1830    51    09%    92    466    7    7    572 
 	grep "0010,703,232,935,1830,51,09%,92,466,7,7,572" 'Straight Party.csv'
@@ -57,7 +57,7 @@ Please note that it does not process the cummulative reports.
 * The sed command is used to correct the error. You edit the second half of the sed command, i.e., you make the correction in the string after the `/`.  
 
 In this example, the percent turnout is split by an extra comma.  To correct this, you would replace the comma with a `.` as provided below.  Finally, you run the folling in the directory of the CSV files and can check if the error has been resolved with the grep command.
-```
+```bash
 # column discontinuity:
 # 0010    703    232    935    1830    51    09%    92    466    7    7    572 
 	grep "0010,703,232,935,1830,51,09%,92,466,7,7,572" 'Straight Party.csv'
