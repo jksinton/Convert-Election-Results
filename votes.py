@@ -892,9 +892,9 @@ def recommend_csv_repairs(logfilename, pdf_file, debug_is_on=False):
 
 
 def find_errors_in_csv_files(csv_path=None, debug_is_on=False):
-    """
+    """Find csv errors contained in the files inside csv_path
     Args:
-        csv_path: path to glob csv files name of csv file
+        csv_path: path to locate csv files name of csv file
         debug_is_on: boolean flag to trigger debug output
     Return:
         Nothing
@@ -912,7 +912,7 @@ def find_errors_in_csv_files(csv_path=None, debug_is_on=False):
 
 
 def find_errors_in_csv_file(csv=None, logfilename="errors.log", debug_is_on=False):
-    """
+    """Find csv errors in the csv file
     Args:
         csv: file name of csv file
         debug_is_on: boolean flag to trigger debug output
