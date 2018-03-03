@@ -34,24 +34,29 @@ Please note that it does not process the cummulative reports.
   * Only three types of errors are detected: 
     * Column discontinuity (i.e., a row does not have the same number of columns as its header), 
     * Errors in the ballot counts (i.e., there's an error in the precinct level ballot counts), and 
-    * Errors in the candidate vote counts (i.e., there's an error in the votes for one of the candidates or total votes). It does not check whether the precinct values are correct or the percentages.   
+    * Errors in the candidate vote counts (i.e., there's an error in the votes for one of the candidates or total votes). It does not check whether the precinct values are correct or the percentages.
   * Recommended command templates will be generated in the `recommended_repairs.txt` file. You MUST edit the repair commands, by finding the error in the corresponding `error_pages.pdf` file.  This PDF file is a concatenated version of the canvass PDF to facilitate updating the repair commands.
 
 3. Check for errors again by providing the path to all the csv files:  `python votes.py -c 2016`
 
-4. Generate the command templates based on the new errors by providing the new error log file and the canvass PDF:  `python votes.py -r new_error.log -p cavnass.pdf`
+4. Generate the command templates based on any new errors found by providing the error log file and the canvass PDF:  `python votes.py -r new_error.log -p cavnass.pdf`
 
-5. Repeat steps 2 and 3 as needed.
+5. Repeat steps 2 and 3 as needed until no errors are found.
 
 
-### An example repair command for a column discontinuity looks like this:
+### An example repair command for a column discontinuity error looks like this:
 ```
 # column discontinuity:
 # 0010    703    232    935    1830    51    09%    92    466    7    7    572 
 	grep "0010,703,232,935,1830,51,09%,92,466,7,7,572" 'Straight Party.csv'
 	sed -i 's/0010,703,232,935,1830,51,09%,92,466,7,7,572/0010,703,232,935,1830,51,09%,92,466,7,7,572/g' 'Straight Party.csv'
 ```
-The grep command allows you to check whether the error exists and has been resolved.  You edit the second half of the sed command after the `/`.  In this example, the percent turnout is split by an extra comma.  To correct this, you would replace the comma with a `.`
+* The first line identifies the type of error.  
+* The second line provides a reproduction of the CSV row with each column spaced by whitespace to provide a human readable version of the row to aid in identifying the error.  
+* The grep command allows you to check whether the error exists and has been resolved.  
+* The sed command is used to correct the error. You edit the second half of the sed command, i.e., you make the correction in the string after the `/`.  
+
+In this example, the percent turnout is split by an extra comma.  To correct this, you would replace the comma with a `.` as provided below.  Finally, you run the folling in the directory of the CSV files and can check if the error has been resolved with the grep command.
 ```
 # column discontinuity:
 # 0010    703    232    935    1830    51    09%    92    466    7    7    572 
@@ -89,7 +94,6 @@ optional arguments:
   -v, --version         show program's version number and exit
   -d, --debug           print debug messages
 ```
-
 
 ## Disclaimer
 This product uses the election results available from the Harris County Clerk but is not endorsed or certified by the Harris County Clerk.
