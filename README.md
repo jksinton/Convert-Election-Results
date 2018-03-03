@@ -27,15 +27,15 @@ Please note that it does not process the cummulative reports.
   * macOS:  ```brew install ghostscript```
 
 ## Instructions
-1.  Convert the election results to CSV format by providing the pdf file and output path to store the CSVs:  `python votes.py -p canvass-2016.pdf -o 2016
+1. Convert the election results to CSV format by providing the pdf file and output path to store the CSVs:  `python votes.py -p canvass-2016.pdf -o 2016
 
-2.  Correct any errors flagged in the error.log file.  
+2. Correct any errors flagged in the error.log file.  
   *  This MUST be done.  There will likely be thousands (e.g., 3000+) of errors identified, but many of the identified errors are duplicates and on the same page.  
-  *  Only three types of errors are detected: 
-    *  Column discontinuity (i.e., a row does not have the same number of columns as its header), 
-    *  Errors in the ballot counts (i.e., there's an error in the precinct level ballot counts), and 
-    *  Errors in the candidate vote counts (i.e., there's an error in the votes for one of the candidates or total votes). It does not check whether the precinct values are correct or the percentages.   
-  *  Recommended command templates will be generated in the `recommended_repairs.txt` file. You MUST edit the repair commands, by finding the error in the corresponding `error_pages.pdf` file.  This PDF file is a concatenated version of the canvass PDF to facilitate updating the repair commands.
+  * Only three types of errors are detected: 
+    * Column discontinuity (i.e., a row does not have the same number of columns as its header), 
+    * Errors in the ballot counts (i.e., there's an error in the precinct level ballot counts), and 
+    * Errors in the candidate vote counts (i.e., there's an error in the votes for one of the candidates or total votes). It does not check whether the precinct values are correct or the percentages.   
+  * Recommended command templates will be generated in the `recommended_repairs.txt` file. You MUST edit the repair commands, by finding the error in the corresponding `error_pages.pdf` file.  This PDF file is a concatenated version of the canvass PDF to facilitate updating the repair commands.
 
 An example repair command for a column discontinuity looks like this:
 ```
@@ -53,11 +53,11 @@ The grep command allows you to check whether the error exists and has been resol
 ```
 
 
-3.  Check for errors again by providing the path to all the csv files:  `python votes.py -c 2016`
+3. Check for errors again by providing the path to all the csv files:  `python votes.py -c 2016`
 
-4.  Generate the command templates based on the new errors by providing the new error log file and the canvass PDF:  `python votes.py -r new_error.log -p cavnass.pdf`
+4. Generate the command templates based on the new errors by providing the new error log file and the canvass PDF:  `python votes.py -r new_error.log -p cavnass.pdf`
 
-5.  Repeat steps 2 and 3 as needed.
+5. Repeat steps 2 and 3 as needed.
 
 ## Usage
 
